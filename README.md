@@ -8,7 +8,7 @@ This project bridges a mobile device (optimized for landscape orientation) with 
 
 * **Real-Time Telemetry:** Streams live CPU, RAM, and active audio volume via `psutil` and `pactl`.
 * **Now Playing Integration:** Hooks into `playerctl` to display current track metadata and control playback.
-* **Waybar-Style Workspace Indicator:** Talks directly to Hyprland's IPC (`hyprctl`) to generate a dynamic workspace pill. It features the Arch Linux logo for your active workspace, solid dots for occupied workspaces, and hollow dots for empty ones.
+* **Waybar-Style Workspace Indicator:** Talks directly to Hyprland's IPC (`hyprctl`) to generate a dynamic workspace pill. It features the A logo for your active workspace, solid dots for occupied workspaces, and hollow dots for empty ones.
 * **Gesture Navigation Engine:** Native JavaScript touch events allow for physical UI control:
   * **Swipe Left/Right:** Shifts Hyprland workspaces (`m+1` / `m-1`) with a satisfying, animated zoom-and-shift physical feedback effect.
   * **Swipe Up:** Deploys the App Drawer.
