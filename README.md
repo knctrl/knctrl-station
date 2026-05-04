@@ -33,7 +33,7 @@ You also need the Python Flask library:
 `pip install flask flask-cors psutil`
 
 ### Deployment
-1. Clone the repository: `git clone https://github.com/YOUR_USERNAME/system-station.git`
+1. Clone the repository: `git clone https://github.com/knctrl/knctrl-station.git`
 2. Open `knctrl_station.py` and locate the **USER CONFIGURATION** block at the top.
 3. Change `SECRET_PIN` to your desired 4-digit code.
 4. Change `WALLPAPER_PATH` to point to a looping `.mp4` background of your choice (if left invalid, the UI safely defaults to a solid void-black background).
