@@ -1,4 +1,4 @@
-# 🎛️SKnctrl // Station
+# Knctrl // Station
 
 A hyper-customized, mobile-first command center built for Arch Linux and the Hyprland window manager. 
 
