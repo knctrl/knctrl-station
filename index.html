@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no,viewport-fit=cover"/>
+<title>System // Station (Demo)</title>
+<style>
+/* --- ROOT & RESET --- */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --text: #ffffff;
+  --accent: #a0aec0;
+  --void: #0a0e14; /* Deep void background for the demo */
+  --glass: rgba(5, 7, 10, 0.85);
+  --eco: #4ade80;
+  --danger: #ff4a4a;
+  --amber: #f6ad55;
+  --ice: #76e4f7;
+  --font: 'JetBrains Mono', monospace;
+}
+
+html, body {
+  width: 100%; height: 100%; overflow: hidden; background: var(--void);
+  font-family: var(--font); color: var(--text); user-select: none;
+  -webkit-tap-highlight-color: transparent; touch-action: none;
+}
+
+body.css-landscape {
+  position: fixed; width: 100vh; height: 100vw;
+  top: calc(50vh - 50vw); left: calc(50vw - 50vh);
+  transform: rotate(90deg); transform-origin: 50% 50%; overflow: hidden;
+}
+
+/* Fallback gradient for demo in case video doesn't load */
+#bg-video-fallback {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  background: radial-gradient(circle at center, #1a202c 0%, #000000 100%);
+  z-index: 0; opacity: 0.8;
+}
+
+/* Base App Layout & Animations */
+#app {
+  position: relative; z-index: 1; width: 100%; height: 100%;
+  display: flex; flex-direction: column; filter: blur(20px); 
+  transition: filter 0.5s ease, transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+}
+#app.unlocked { filter: blur(0px); }
+#app.launcher-open { transform: scale(0.95); opacity: 0.5; }
+#app.workspace-switch-next { transform: scale(0.93) translateX(-40px); opacity: 0.4; }
+#app.workspace-switch-prev { transform: scale(0.93) translateX(40px); opacity: 0.4; }
+
+/* --- HEADER --- */
+header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: clamp(0.5rem, 2vh, 1rem) clamp(1rem, 3vw, 2rem); flex-shrink: 0;
+}
+.hdr-left { display: flex; align-items: center; }
+.hdr-right { display: flex; gap: clamp(0.5rem, 2vw, 1rem); }
+.hdr-btn {
+  background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255,255,255,0.2); 
+  color: var(--text); cursor: pointer; padding: 10px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s ease; position: relative; width: 42px; height: 42px;
+}
+.hdr-btn:active { transform: scale(0.9); background: rgba(255,255,255,0.2); }
+.hdr-btn.active { background: var(--eco); color: #000; border-color: var(--eco); }
+.hdr-btn svg { width: 20px; height: 20px; stroke: currentColor; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+
+.hdr-wordmark {
+  font-size: clamp(0.5rem, 2vh, 0.7rem); font-weight: 700;
+  letter-spacing: 0.22em; color: rgba(160,174,192,0.4); text-transform: uppercase;
+}
+
+/* --- MAIN CONTENT --- */
+main {
+  flex: 1; display: flex; align-items: center; justify-content: space-around;
+  padding: 0 clamp(1rem, 3vw, 2rem); gap: 2rem; overflow: hidden;
+}
+
+.time-section { display: flex; flex-direction: column; align-items: center;}
+.clock-row { display: flex; align-items: baseline; }
+#time-hm {
+  font-size: clamp(4rem, 20vh, 8.5rem); font-weight: 800;
+  background: linear-gradient(to bottom, #ffffff 20%, #cbd5e0 60%, var(--void));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  line-height: 0.8; letter-spacing: -6px; filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.15));
+}
+#time-s {
+  font-size: clamp(2rem, 8vh, 3rem); font-weight: 800; margin-left: 12px; opacity: 0.5; width: 70px;
+  background: linear-gradient(to bottom, #ffffff, #cbd5e0); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+#date-display {
+  font-size: clamp(0.7rem, 3vh, 0.85rem); color: #fff; letter-spacing: 6px;
+  margin-top: 2vh; opacity: 0.6; text-transform: uppercase; text-align: center;
+}
+
+/* WORKSPACE INDICATOR */
+.workspace-pill {
+  display: flex; justify-content: center; align-items: center; gap: 12px;
+  background: rgba(15, 20, 25, 0.8); border: 1px solid rgba(255,255,255,0.05);
+  padding: 8px 18px; border-radius: 20px; margin-top: 15px;
+  box-shadow: inset 0 2px 5px rgba(0,0,0,0.5), 0 5px 15px rgba(0,0,0,0.3);
+  opacity: 0; transition: opacity 0.5s ease;
+}
+#app.unlocked .workspace-pill { opacity: 1; }
+.ws-icon {
+  width: 14px; height: 14px; display: flex; justify-content: center; align-items: center;
+  color: rgba(255,255,255,0.4); transition: all 0.3s ease;
+}
+.ws-icon.active { color: #fff; width: 18px; height: 18px; filter: drop-shadow(0 0 5px rgba(255,255,255,0.5)); }
+.ws-icon.occupied { color: rgba(255,255,255,0.8); }
+.ws-icon svg { width: 100%; height: 100%; fill: currentColor; }
+
+.glass-card {
+  background: var(--glass); backdrop-filter: blur(40px);
+  border: 1px solid rgba(255,255,255,0.06); border-radius: 20px;
+  padding: 4vh 30px; width: 100%; max-width: 500px;
+  display: flex; flex-direction: column; text-align: center;
+  box-shadow: 0 30px 60px rgba(0,0,0,0.7); overflow: hidden;
+}
+.marquee-wrap { width: 100%; overflow: hidden; white-space: nowrap; position: relative; margin-bottom: 5px; }
+#track-title { display: inline-block; font-size: clamp(1rem, 4vh, 1.4rem); font-weight: bold; color: #fff; }
+
+#artist-name { font-size: clamp(0.6rem, 2.5vh, 0.8rem); opacity: 0.4; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 3vh; }
+
+.media-controls { 
+  display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 3vh; 
+  transition: opacity 0.3s ease, margin 0.3s ease, height 0.3s ease;
+}
+.m-btn {
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+  color: var(--accent); border-radius: 10px; padding: 10px 15px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; transition: all 0.15s ease;
+}
+.m-btn:active { transform: scale(0.9); background: rgba(255,255,255,0.15); }
+.m-btn.primary { color: #fff; background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.3); }
+.m-btn svg { width: 18px; height: 18px; fill: currentColor; }
+
+.stats-grid { display: flex; justify-content: space-around; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 2.5vh; }
+.stat-cell { flex: 1; }
+.stat-label { font-size: 0.55rem; opacity: 0.3; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 5px; display: block; }
+.stat-val { font-size: clamp(1.2rem, 5vh, 1.5rem); font-weight: 700; color: #fff; font-variant-numeric: tabular-nums; }
+
+#visualizer { width: 100%; height: clamp(40px, 10vh, 80px); flex-shrink: 0; transition: opacity 0.5s ease; }
+
+/* --- OVERLAYS --- */
+.overlay {
+  position: absolute; inset: 0; background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(20px);
+  z-index: 999; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+}
+.overlay.active { opacity: 1; pointer-events: all; }
+.overlay-title { font-size: clamp(0.8rem, 2.5vh, 1.2rem); font-weight: 700; letter-spacing: 4px; color: #fff; margin-bottom: 3vh; text-align: center;}
+.overlay-close { 
+  margin-top: clamp(1.5rem, 4vh, 3rem); opacity: 0.5; 
+  font-size: clamp(0.55rem, 1.4vw, 0.7rem); letter-spacing: 2px; 
+  cursor: pointer; text-align: center; transition: opacity 0.2s ease;
+}
+
+.power-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; width: 80%; max-width: 400px; }
+.power-btn {
+  background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 20px; color: var(--text); cursor: pointer; padding: 25px 10px;
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  font-family: var(--font); font-size: 0.7rem; font-weight: 700; letter-spacing: 2px;
+  transition: all 0.2s ease;
+}
+.power-btn:active { transform: scale(0.95); }
+.power-btn svg { width: 24px; height: 24px; }
+.power-btn.shutdown { border-color: rgba(255,74,74,0.3); color: var(--danger); }
+.power-btn.reboot { border-color: rgba(246,173,85,0.3); color: var(--amber); }
+
+/* --- APP LAUNCHER (TEXT ONLY, MONOCHROMATIC) --- */
+#app-launcher-wrapper {
+  position: absolute; inset: 0; z-index: 998; pointer-events: none;
+  display: flex; flex-direction: column; justify-content: flex-end; align-items: center;
+}
+#app-launcher {
+  width: 90%; max-width: 650px; padding: 35px 25px; margin-bottom: 25px;
+  background: rgba(10, 15, 20, 0.85); backdrop-filter: blur(30px);
+  border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 30px;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.8);
+  display: flex; justify-content: center;
+  transform: translateY(150%); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: auto;
+}
+#app-launcher-wrapper.active { pointer-events: auto; }
+#app-launcher-wrapper.active #app-launcher { transform: translateY(0); }
+
+.launcher-grid { 
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px 20px; width: 100%;
+}
+
+.text-app-btn {
+  display: flex; justify-content: center; align-items: center;
+  width: 100%; height: 60px; border-radius: 15px;
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+  color: #fff; font-family: var(--font); font-size: clamp(0.7rem, 2vw, 0.9rem);
+  font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
+  cursor: pointer; transition: all 0.2s ease;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+
+.text-app-btn:active { transform: scale(0.95); background: rgba(255,255,255,0.2); border-color: rgba(255,255,255,0.5); }
+
+/* --- LOCK SCREEN OVERLAY --- */
+#lock-screen {
+  position: absolute; inset: 0; background: var(--void); z-index: 9999;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  transition: opacity 0.5s ease;
+}
+#lock-screen.hidden { opacity: 0; pointer-events: none; }
+.pin-display { display: flex; gap: 15px; margin-bottom: 40px; }
+.pin-dot { width: 15px; height: 15px; border-radius: 50%; border: 2px solid var(--accent); transition: all 0.2s ease; }
+.pin-dot.filled { background: #fff; border-color: #fff; box-shadow: 0 0 10px rgba(255,255,255,0.5); }
+.pin-dot.error { border-color: var(--danger); background: var(--danger); box-shadow: 0 0 10px var(--danger); }
+.numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; width: 280px; }
+.num-btn {
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 50%;
+  color: #fff; font-size: 1.5rem; font-family: var(--font); cursor: pointer;
+  display: flex; justify-content: center; align-items: center; aspect-ratio: 1; transition: all 0.1s ease;
+}
+.num-btn:active { background: rgba(255,255,255,0.2); transform: scale(0.9); }
+
+</style>
+</head>
+<body>
+
+  <!-- LOCK SCREEN -->
+  <div id="lock-screen">
+    <div class="overlay-title" id="lock-msg">// LIVE DEMO SECURE<br><span style="font-size:0.5rem; opacity:0.5; font-weight:normal;">ENTER PIN (0451)</span></div>
+    <div class="pin-display" id="pin-display">
+      <div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div>
+    </div>
+    <div class="numpad" id="numpad">
+      <button class="num-btn" onclick="enterPin('1')">1</button>
+      <button class="num-btn" onclick="enterPin('2')">2</button>
+      <button class="num-btn" onclick="enterPin('3')">3</button>
+      <button class="num-btn" onclick="enterPin('4')">4</button>
+      <button class="num-btn" onclick="enterPin('5')">5</button>
+      <button class="num-btn" onclick="enterPin('6')">6</button>
+      <button class="num-btn" onclick="enterPin('7')">7</button>
+      <button class="num-btn" onclick="enterPin('8')">8</button>
+      <button class="num-btn" onclick="enterPin('9')">9</button>
+      <button class="num-btn" style="visibility:hidden;">*</button>
+      <button class="num-btn" onclick="enterPin('0')">0</button>
+      <button class="num-btn" onclick="clearPin()">C</button>
+    </div>
+  </div>
+
+  <div id="bg-video-fallback"></div>
+  
+  <!-- APP SHELL -->
+  <div id="app">
+    <header>
+      <div class="hdr-left">
+        <button class="hdr-btn" id="btn-notif" onclick="alert('[DEMO] Notifications Opened')">
+          <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+        </button>
+      </div>
+      <span class="hdr-wordmark">SYSTEM // STATION DEMO</span>
+      <div class="hdr-right">
+        <button class="hdr-btn btn-eco" id="btn-eco" onclick="alert('[DEMO] Eco Mode Toggled')">
+          <svg viewBox="0 0 24 24"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"></path><line x1="2" y1="22" x2="11" y2="20"></line></svg>
+        </button>
+        <button class="hdr-btn" onclick="openPower()">
+          <svg viewBox="0 0 24 24"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg>
+        </button>
+      </div>
+    </header>
+
+    <main>
+      <div class="time-section">
+        <div class="clock-row"><span id="time-hm">00:00</span><span id="time-s">00</span></div>
+        <div id="date-display">LOADING...</div>
+        <div id="workspace-pill" class="workspace-pill"></div>
+      </div>
+
+      <div class="glass-card">
+        <div class="marquee-wrap"><span id="track-title">Loading...</span></div>
+        <div id="artist-name">─</div>
+        
+        <div class="media-controls" id="media-ctrls">
+          <button class="m-btn" onclick="alert('[DEMO] Previous Track')">
+            <svg viewBox="0 0 24 24"><polygon points="19,20 9,12 19,4"/><line x1="5" y1="19" x2="5" y2="5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </button>
+          <button class="m-btn primary" id="btn-playpause" onclick="alert('[DEMO] Play/Pause')">
+            <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
+          </button>
+          <button class="m-btn" onclick="alert('[DEMO] Next Track')">
+            <svg viewBox="0 0 24 24"><polygon points="5,4 15,12 5,20"/><line x1="19" y1="5" x2="19" y2="19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-cell"><span class="stat-label">CPU</span><span class="stat-val" id="cpu-val">─</span></div>
+          <div class="stat-cell"><span class="stat-label">RAM</span><span class="stat-val" id="ram-val">─</span></div>
+          <div class="stat-cell"><span class="stat-label">VOL</span><span class="stat-val" id="vol-val">─</span></div>
+        </div>
+      </div>
+    </main>
+
+    <canvas id="visualizer"></canvas>
+  </div>
+
+  <!-- FLOATING APP LAUNCHER (TEXT ONLY) -->
+  <div id="app-launcher-wrapper">
+    <div id="app-launcher">
+      <div class="launcher-grid">
+        <div class="text-app-btn" onclick="launchApp('Discord')">DISCORD</div>
+        <div class="text-app-btn" onclick="launchApp('Steam')">STEAM</div>
+        <div class="text-app-btn" onclick="launchApp('Floorp')">FLOORP</div>
+        <div class="text-app-btn" onclick="launchApp('Terminal')">TERMINAL</div>
+        <div class="text-app-btn" onclick="launchApp('Files')">FILES</div>
+        <div class="text-app-btn" onclick="launchApp('Btop')">BTOP</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- OVERLAYS -->
+  <div class="overlay" id="power-overlay" onclick="overlayBackdrop(event,'power-overlay')">
+    <div class="overlay-title">// POWER CONTROL (DEMO)</div>
+    <div class="power-grid">
+      <button class="power-btn shutdown" onclick="alert('[DEMO] System Shutdown Initiated')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="12"/><path d="M6.5 6.5a7 7 0 1 0 11 0"/></svg>
+        SHUTDOWN
+      </button>
+      <button class="power-btn reboot" onclick="alert('[DEMO] System Reboot Initiated')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.99"/></svg>
+        REBOOT
+      </button>
+    </div>
+    <div class="overlay-close" onclick="closeOverlay('power-overlay')">TAP ANYWHERE TO CANCEL</div>
+  </div>
+
+<script>
+// --- ICONS & STATE ---
+const ICON_PLAY = `<svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>`;
+const ICON_PAUSE = `<svg viewBox="0 0 24 24"><rect x="6" y="3" width="4" height="18" rx="1"/><rect x="14" y="3" width="4" height="18" rx="1"/></svg>`;
+
+const WS_ARCH = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C11.5 2 11 2.4 10.8 2.8C9.8 5.4 8.5 8.5 7 12C6.3 13.7 5.6 15.3 5 17C4.4 18.7 3.8 20.3 3.6 21C3.5 21.3 3.6 21.5 3.8 21.7C4 21.9 4.2 21.9 4.4 21.8C7.8 21.3 11.2 20.3 14.5 18.8C14.8 18.7 15 18.4 15.1 18L15.9 13.2C15.9 12.9 15.7 12.7 15.4 12.7H8.6C8.3 12.7 8.1 12.9 8.1 13.2L8.9 18C9 18.4 9.2 18.7 9.5 18.8C12.8 20.3 16.2 21.3 19.6 21.8C19.8 21.9 20 21.9 20.2 21.7C20.4 21.5 20.5 21.3 20.4 21C20.2 20.3 19.6 18.7 19 17C18.4 15.3 17.7 13.7 17 12C15.5 8.5 14.2 5.4 13.2 2.8C13 2.4 12.5 2 12 2ZM12 9.2C12.2 9.2 12.3 9.3 12.4 9.4C12.8 9.7 13 10.2 12.9 10.7L12 16.2H12L11.1 10.7C11 10.2 11.2 9.7 11.6 9.4C11.7 9.3 11.8 9.2 12 9.2Z"/></svg>`;
+const WS_FILLED = `<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="7"/></svg>`;
+const WS_EMPTY = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="7"/></svg>`;
+
+const S = { unlocked: false, demoActiveWs: 2 };
+
+// --- LOCK ENGINE (MOCKED FOR GITHUB PAGES) ---
+let currentPin = "";
+const dots = document.querySelectorAll('.pin-dot');
+
+function updateDots() {
+    dots.forEach((dot, index) => {
+        if (index < currentPin.length) dot.classList.add('filled');
+        else dot.classList.remove('filled');
+    });
+}
+
+function clearPin() {
+    currentPin = "";
+    dots.forEach(dot => dot.classList.remove('error', 'filled'));
+    document.getElementById('lock-msg').innerHTML = '// LIVE DEMO SECURE<br><span style="font-size:0.5rem; opacity:0.5; font-weight:normal;">ENTER PIN (0451)</span>';
+    document.getElementById('lock-msg').style.color = '#fff';
+    updateDots();
+}
+
+function enterPin(num) {
+    if (currentPin.length < 4) {
+        currentPin += num;
+        updateDots();
+        if (currentPin.length === 4) {
+            if (currentPin === "0451") {
+                // SUCCESS
+                document.getElementById('lock-screen').classList.add('hidden');
+                document.getElementById('app').classList.add('unlocked');
+                S.unlocked = true;
+                setInterval(mockTelemetry, 2000); 
+                mockTelemetry();
+            } else {
+                // FAIL - DEPLOY THE NIGHTMARE
+                dots.forEach(dot => dot.classList.add('error'));
+                document.getElementById('lock-msg').innerHTML = '// INTRUSION DETECTED<br><span style="font-size:0.5rem; opacity:0.5; font-weight:normal;">REROUTING...</span>';
+                document.getElementById('lock-msg').style.color = 'var(--danger)';
+                setTimeout(deployNightmare, 1000);
+            }
+        }
+    }
+}
+
+// --- MOCK TELEMETRY FOR DEMO ---
+function mockTelemetry() {
+    if (!S.unlocked) return;
+    
+    // Fake system stats
+    document.getElementById('cpu-val').textContent = Math.floor(Math.random() * 15 + 10) + '%';
+    document.getElementById('ram-val').textContent = '42%';
+    document.getElementById('vol-val').textContent = '65%';
+
+    // Fake media info
+    document.getElementById('track-title').textContent = "Demo Track // Nullscapes";
+    document.getElementById('artist-name').textContent = "Local Host";
+    document.getElementById('btn-playpause').innerHTML = ICON_PAUSE;
+
+    renderMockWorkspaces();
+}
+
+function renderMockWorkspaces() {
+    const dotsContainer = document.getElementById('workspace-pill');
+    let dotsHtml = '';
+    for(let i=1; i<=5; i++) {
+        if (i === S.demoActiveWs) {
+            dotsHtml += `<div class="ws-icon active">${WS_ARCH}</div>`;
+        } else if (i === 1 || i === 4) {
+            dotsHtml += `<div class="ws-icon occupied">${WS_FILLED}</div>`;
+        } else {
+            dotsHtml += `<div class="ws-icon">${WS_EMPTY}</div>`;
+        }
+    }
+    dotsContainer.innerHTML = dotsHtml;
+}
+
+
+// --- OVERLAYS ---
+function overlayBackdrop(e, id) { if (e.target === e.currentTarget) closeOverlay(id); }
+function closeOverlay(id) { document.getElementById(id).classList.remove('active'); }
+function openPower() { document.getElementById('power-overlay').classList.add('active'); }
+
+// --- APP LAUNCHER & SWIPE NAV (MOCKED) ---
+let touchStartX = 0; let touchStartY = 0;
+const appDiv = document.getElementById('app');
+const launcherWrapper = document.getElementById('app-launcher-wrapper');
+
+document.addEventListener('touchstart', e => { 
+    if (!S.unlocked) return;
+    touchStartX = e.touches[0].clientX; touchStartY = e.touches[0].clientY; 
+}, {passive: true});
+
+document.addEventListener('touchend', e => {
+    if (!S.unlocked) return;
+    const dx = touchStartX - e.changedTouches[0].clientX;
+    const dy = touchStartY - e.changedTouches[0].clientY;
+    
+    if (Math.abs(dx) > Math.abs(dy)) {
+        if (Math.abs(dx) > 60 && !document.querySelector('.overlay.active') && !launcherWrapper.classList.contains('active')) {
+            if (dx > 0) {
+                appDiv.classList.add('workspace-switch-next');
+                S.demoActiveWs = S.demoActiveWs < 5 ? S.demoActiveWs + 1 : 1;
+            } else {
+                appDiv.classList.add('workspace-switch-prev');
+                S.demoActiveWs = S.demoActiveWs > 1 ? S.demoActiveWs - 1 : 5;
+            }
+            renderMockWorkspaces();
+            setTimeout(() => { appDiv.classList.remove('workspace-switch-next', 'workspace-switch-prev'); }, 300);
+        }
+    } else {
+        if (dy > 50 && !document.querySelector('.overlay.active')) {
+            launcherWrapper.classList.add('active');
+            appDiv.classList.add('launcher-open');
+        }
+    }
+}, {passive: true});
+
+launcherWrapper.addEventListener('click', e => { if (e.target === launcherWrapper) closeLauncher(); });
+function closeLauncher() { launcherWrapper.classList.remove('active'); appDiv.classList.remove('launcher-open'); }
+function launchApp(appId) { closeLauncher(); alert(`[DEMO] Launched Application: ${appId}`); }
+
+// --- CLOCK ---
+function tickClock() {
+    const n = new Date();
+    document.getElementById('time-hm').textContent = `${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`;
+    document.getElementById('time-s').textContent = String(n.getSeconds()).padStart(2,'0');
+    document.getElementById('date-display').textContent = n.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase();
+}
+setInterval(tickClock, 1000); tickClock();
+
+// --- VISUALIZER ---
+(function initVis() {
+    const canvas = document.getElementById('visualizer');
+    const ctx = canvas.getContext('2d');
+    const N = 60; const bars = new Float32Array(N); const targets = new Float32Array(N);
+    const phases = new Float32Array(N).map((_, i) => i * 0.19 + Math.random() * 0.5);
+    let W, H;
+    
+    function resize() { W = canvas.clientWidth; H = canvas.clientHeight; canvas.width = W; canvas.height = H; bars.fill(0); targets.fill(0); }
+    window.addEventListener('resize', resize); resize();
+
+    let lastTs = 0;
+    function draw(ts) {
+        requestAnimationFrame(draw);
+        if (!S.unlocked) return;
+        const dt = Math.min((ts - lastTs) / 1000, 0.05); lastTs = ts;
+
+        for (let i = 0; i < N; i++) {
+            phases[i] += 1.6 * dt;
+            const t = phases[i]; const pos = i / N;
+            const wave = (Math.sin(t)*0.4 + Math.sin(t*1.7+1)*0.25 + Math.sin(t*2.9+2)*0.15)*0.5 + 0.5;
+            const bell = Math.exp(-Math.pow((pos-0.28)/0.22, 2))*0.7 + Math.exp(-Math.pow((pos-0.70)/0.18, 2))*0.3;
+            const noise = (Math.random()-0.5)*0.28;
+            targets[i] = Math.max(0.01, Math.min(0.97, (wave * bell + noise) * 1.0 + 0.018));
+            bars[i] += (targets[i] - bars[i]) * 0.10;
+        }
+        ctx.clearRect(0, 0, W, H);
+        const barW = W / N; const gap = Math.max(1, barW * 0.16); const bw = barW - gap;
+        for (let i = 0; i < N; i++) {
+            const x = i * barW + gap * 0.5; const bh = Math.max(1, bars[i] * H); const y = H - bh;
+            ctx.fillStyle = `rgba(255,255,255,${(0.30 + bars[i] * 0.70).toFixed(3)})`;
+            ctx.fillRect(x, y, bw, bh);
+        }
+    }
+    requestAnimationFrame(draw);
+})();
+
+// --- THE CURSED GEOCITIES EASTER EGG (MOCK ROUTE) ---
+function deployNightmare() {
+    const html = `
+    <html>
+    <head><title>System Station - WHY ARE YOU HERE</title><meta http-equiv="refresh" content="3"></head>
+    <body bgcolor="cyan" text="magenta" link="blue" vlink="blue">
+        <center>
+            <h1><blink>SYSTEM STATION (CURSED EDITION)</blink></h1>
+            <a href="javascript:location.reload()">[Take me back to safety]</a>
+            <hr>
+            <br><br>
+            <table border="1" cellpadding="10" bgcolor="yellow"><tr><th>CPU</th><th>RAM</th><th>VOLUME</th></tr><tr><td>ERR</td><td>ERR</td><td>ERR</td></tr></table>
+            <br>
+            <h2>NOW PLAYING:</h2><h3>No Song - No Artist</h3>
+            <input type="button" value="PREV" onclick="alert('ACCESS DENIED.')">
+            <input type="button" value="PLAY_PAUSE" onclick="alert('ACCESS DENIED.')">
+            <input type="button" value="NEXT" onclick="alert('ACCESS DENIED.')">
+            <hr>
+            <h2>POWER CONTROLS</h2>
+            <input type="button" value="SHUTDOWN" onclick="alert('YOUR ATTEMPT HAS BEEN LOGGED.')">
+            <hr>
+            <h2>NOTIFICATIONS</h2>
+            <marquee direction="up" scrollamount="2" height="100"><br><br>[System] Intrusion Detected: Invalid PIN entered.</marquee>
+            <hr>
+            <h2>VISUALIZER</h2>
+            <marquee behavior="alternate" scrollamount="50">|||||||||||||||||||||||||||||||||||||||</marquee>
+        </center>
+    </body>
+    </html>`;
+    
+    document.documentElement.innerHTML = html;
+    
+    // Trigger the aggressive script
+    setTimeout(() => {
+        alert("ACCESS DENIED."); alert("YOUR ATTEMPT HAS BEEN LOGGED.");
+        const lyrics = ["Never gonna give you up", "Never gonna let you down", "Never gonna run around and desert you"];
+        for(let i=0; i<3; i++) { for(let line of lyrics) { alert(line); } }
+        alert("STILL HERE?"); alert("FINE.");
+        const beeMovie = ["According to all known laws of aviation,", "there is no way a bee should be able to fly."];
+        for(let line of beeMovie) { alert(line); }
+        alert("HAVE A NICE DAY.");
+    }, 500);
+}
+</script>
+</body>
+</html>
